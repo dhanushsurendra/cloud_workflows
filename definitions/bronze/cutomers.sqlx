@@ -1,0 +1,197 @@
+config {
+    type: "incremental",
+    schema: "qb_bronze",
+    name: "customers",
+    uniqueKey: ["id"]
+}
+
+with source as (
+SELECT
+ JSON_VALUE(raw_payload,'$.id') AS id,
+JSON_VALUE(raw_payload,'$.accountNumber') AS account_number,
+
+JSON_VALUE(raw_payload,'$.alternateContact') AS alternate_contact,
+JSON_VALUE(raw_payload,'$.alternatePhone') AS alternate_phone,
+
+CAST(JSON_VALUE(raw_payload,'$.balance') AS NUMERIC ) AS balance,
+CAST(JSON_VALUE(raw_payload,'$.totalBalance') AS NUMERIC) AS total_balance,
+
+JSON_VALUE(raw_payload,'$.contact') AS contact,
+JSON_VALUE(raw_payload,'$.companyName') AS company_name,
+JSON_VALUE(raw_payload,'$.class') AS class,
+JSON_VALUE(raw_payload,'$.currency') AS currency,
+
+JSON_VALUE(raw_payload,'$.firstName') AS first_name,
+JSON_VALUE(raw_payload,'$.middleName') AS middle_name,
+JSON_VALUE(raw_payload,'$.lastName') AS last_name,
+JSON_VALUE(raw_payload,'$.fullName') AS full_name,
+JSON_VALUE(raw_payload,'$.name') AS name,
+JSON_VALUE(raw_payload,'$.salutation') AS salutation,
+
+JSON_VALUE(raw_payload,'$.parent.id') AS parent_id,
+JSON_VALUE(raw_payload,'$.parent.fullName') AS parent_full_name,
+
+JSON_VALUE(raw_payload,'$.phone') AS phone,
+JSON_VALUE(raw_payload,'$.fax') AS fax,
+JSON_VALUE(raw_payload,'$.email') AS email,
+JSON_VALUE(raw_payload,'$.ccEmail') AS cc_email,
+
+CAST(JSON_VALUE(raw_payload,'$.isActive') AS BOOL) AS is_active,
+
+JSON_VALUE(raw_payload,'$.jobDescription') AS job_description,
+JSON_VALUE(raw_payload,'$.jobTitle') AS job_title,
+JSON_VALUE(raw_payload,'$.jobStatus') AS job_status,
+JSON_VALUE(raw_payload,'$.jobType.id') AS job_type_id,
+JSON_VALUE(raw_payload,'$.jobType.fullName') AS job_type_full_name,
+
+CAST(JSON_VALUE(raw_payload,'$.jobStartDate') AS DATE) AS job_start_date,
+CAST(JSON_VALUE(raw_payload,'$.jobEndDate') AS DATE) AS job_end_date,
+CAST(JSON_VALUE(raw_payload,'$.jobProjectedEndDate') AS DATE) AS job_projected_end_date,
+
+CAST(JSON_VALUE(raw_payload,'$.createdAt') AS TIMESTAMP) AS created_at,
+CAST(JSON_VALUE(raw_payload,'$.updatedAt') AS TIMESTAMP) AS updated_at,
+
+JSON_VALUE(raw_payload,'$.revisionNumber') AS revision_number,
+JSON_VALUE(raw_payload,'$.objectType') AS object_type,
+
+JSON_VALUE(raw_payload,'$.priceLevel.id') AS price_level_id,
+JSON_VALUE(raw_payload,'$.priceLevel.fullName') AS price_level_full_name,
+JSON_VALUE(raw_payload,'$.resaleNumber') AS resale_number,
+JSON_VALUE(raw_payload,'$.preferredDeliveryMethod') AS preferred_delivery_method,
+JSON_VALUE(raw_payload,'$.preferredPaymentMethod.id') AS preferred_payment_method_id,
+JSON_VALUE(raw_payload,'$.preferredPaymentMethod.fullName') AS preferred_payment_method_full_name,
+
+CAST(JSON_VALUE(raw_payload,'$.creditLimit') AS NUMERIC) AS credit_limit,
+CAST(JSON_VALUE(raw_payload,'$.creditCard') AS NUMERIC) AS credit_card,
+
+JSON_VALUE(raw_payload,'$.taxRegistrationNumber') AS tax_registration_number,
+
+JSON_VALUE(raw_payload,'$.externalId') AS external_id,
+
+CAST(JSON_VALUE(raw_payload,'$.sublevel') AS FLOAT64) AS sublevel,
+JSON_VALUE(raw_payload,'$.salesRepresentative') AS sales_representative,
+
+JSON_VALUE(raw_payload,'$.note') AS note,
+
+-- billing address
+
+JSON_VALUE(raw_payload,'$.billingAddress.line1') AS billing_address_line1,
+JSON_VALUE(raw_payload,'$.billingAddress.line2') AS billing_address_line2,
+JSON_VALUE(raw_payload,'$.billingAddress.line3') AS billing_address_line3,
+JSON_VALUE(raw_payload,'$.billingAddress.line4') AS billing_address_line4,
+JSON_VALUE(raw_payload,'$.billingAddress.line5') AS billing_address_line5,
+JSON_VALUE(raw_payload,'$.billingAddress.city') AS billing_address_city,
+JSON_VALUE(raw_payload,'$.billingAddress.state') AS billing_address_state,
+JSON_VALUE(raw_payload,'$.billingAddress.postalCode') AS billing_address_postal_code,
+JSON_VALUE(raw_payload,'$.billingAddress.country') AS billing_address_country,
+JSON_VALUE(raw_payload,'$.billingAddress.note') AS billing_address_note,
+
+-- shipping address
+
+JSON_VALUE(raw_payload,'$.shippingAddress.line1') AS shipping_address_line1,
+JSON_VALUE(raw_payload,'$.shippingAddress.line2') AS shipping_address_line2,
+JSON_VALUE(raw_payload,'$.shippingAddress.line3') AS shipping_address_line3,
+JSON_VALUE(raw_payload,'$.shippingAddress.line4') AS shipping_address_line4,
+JSON_VALUE(raw_payload,'$.shippingAddress.line5') AS shipping_address_line5,
+JSON_VALUE(raw_payload,'$.shippingAddress.city') AS shipping_address_city,
+JSON_VALUE(raw_payload,'$.shippingAddress.state') AS shipping_address_state,
+JSON_VALUE(raw_payload,'$.shippingAddress.postalCode') AS shipping_address_postal_code,
+JSON_VALUE(raw_payload,'$.shippingAddress.country') AS shipping_address_country,
+JSON_VALUE(raw_payload,'$.shippingAddress.note') AS shipping_address_note,
+
+-- nested objects
+
+JSON_VALUE(raw_payload,'$.customerType.id') AS customer_type_id,
+JSON_VALUE(raw_payload,'$.customerType.fullName') AS customer_type_full_name,
+
+JSON_VALUE(raw_payload,'$.salesTaxCode.id') AS sales_tax_code_id,
+JSON_VALUE(raw_payload,'$.salesTaxCode.fullName') AS sales_tax_code_full_name,
+JSON_VALUE(raw_payload,'$.salesTaxCountry') AS sales_tax_country,
+
+JSON_VALUE(raw_payload,'$.salesTaxItem.id') AS sales_tax_item_id,
+JSON_VALUE(raw_payload,'$.salesTaxItem.fullName') AS sales_tax_item_full_name,
+
+JSON_VALUE(raw_payload,'$.terms.id') AS terms_id,
+JSON_VALUE(raw_payload,'$.terms.fullName') AS terms_full_name,
+
+-- arrays
+
+ARRAY(
+  SELECT AS STRUCT
+    JSON_VALUE(x,'$.id') AS id,
+    JSON_VALUE(x,'$.objectType') AS object_type,
+    CAST(JSON_VALUE(x,'$.createdAt') AS TIMESTAMP) AS created_at,
+    CAST(JSON_VALUE(x,'$.updatedAt') AS TIMESTAMP) AS updated_at,
+    JSON_VALUE(x,'$.revisionNumber') AS revision_number,
+    JSON_VALUE(x,'$.name') AS name,
+    JSON_VALUE(x,'$.salutation') AS salutation,
+    JSON_VALUE(x,'$.firstName') AS first_name,
+    JSON_VALUE(x,'$.middleName') AS middle_name,
+    JSON_VALUE(x,'$.lastName') AS last_name,
+    JSON_VALUE(x,'$.jobTitle') AS job_title,
+
+    ARRAY(
+      SELECT AS STRUCT
+        JSON_VALUE(f,'$.name') AS name,
+        JSON_VALUE(f,'$.value') AS value
+      FROM UNNEST(IFNULL(JSON_QUERY_ARRAY(x,'$.customContactFields'), [])) f
+    ) AS custom_contact_fields
+
+  FROM UNNEST(IFNULL(JSON_QUERY_ARRAY(raw_payload,'$.additionalContacts'), [])) x
+) AS additional_contacts,
+
+ARRAY(
+  SELECT AS STRUCT
+    CAST(JSON_VALUE(x,'$.id') AS INT64) AS id,
+    CAST(JSON_VALUE(x,'$.date') AS DATE) AS date,
+    JSON_VALUE(x,'$.note') AS note
+  FROM UNNEST(IFNULL(JSON_QUERY_ARRAY(raw_payload,'$.additionalNotes'), [])) x
+) AS additional_notes,
+
+ARRAY(
+  SELECT AS STRUCT
+    JSON_VALUE(x,'$.name') AS name,
+    JSON_VALUE(x,'$.line1') AS line1,
+    JSON_VALUE(x,'$.line2') AS line2,
+    JSON_VALUE(x,'$.line3') AS line3,
+    JSON_VALUE(x,'$.line4') AS line4,
+    JSON_VALUE(x,'$.line5') AS line5,
+    JSON_VALUE(x,'$.city') AS city,
+    JSON_VALUE(x,'$.state') AS state,
+    JSON_VALUE(x,'$.postalCode') AS postal_code,
+    JSON_VALUE(x,'$.country') AS country,
+    JSON_VALUE(x,'$.note') AS note,
+    CAST(JSON_VALUE(x,'$.isDefaultShippingAddress') AS BOOL) AS is_default_shipping_address
+  FROM UNNEST(IFNULL(JSON_QUERY_ARRAY(raw_payload,'$.alternateShippingAddresses'), [])) x
+) AS alternate_shipping_addresses,
+
+ARRAY(
+  SELECT AS STRUCT
+    JSON_VALUE(x,'$.name') AS name,
+    JSON_VALUE(x,'$.value') AS value
+  FROM UNNEST(IFNULL(JSON_QUERY_ARRAY(raw_payload,'$.customContactFields'), [])) x
+) AS custom_contact_fields,
+
+ARRAY(
+  SELECT AS STRUCT
+    JSON_VALUE(x,'$.ownerId') AS owner_id,
+    JSON_VALUE(x,'$.name') AS name,
+    JSON_VALUE(x,'$.type') AS type,
+    JSON_VALUE(x,'$.value') AS value
+  FROM UNNEST(IFNULL(JSON_QUERY_ARRAY(raw_payload,'$.customFields'), [])) x
+) AS custom_fields
+
+FROM ${ref("raw_customers")}),
+latest_source AS (
+  SELECT 
+    *,
+    row_number() over(PARTITION BY id ORDER BY updated_at DESC) AS latest_flag 
+  FROM source
+)
+SELECT * EXCEPT(latest_flag) FROM latest_source
+WHERE latest_flag=1
+
+
+
+
+

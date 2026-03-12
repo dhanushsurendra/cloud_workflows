@@ -1,0 +1,4 @@
+defaultProject: complete-stock-488305-t3
+defaultDataset: dataform
+defaultAssertionDataset: dataform_assertions
+dataformCoreVersion: 3.0.42

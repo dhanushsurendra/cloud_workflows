@@ -4,7 +4,7 @@ config {
     name: "customers",
     tags: ["silver"],
     bigquery: {
-        partitionBy: "active_from",
+        partitionBy: "DATE(active_from)",
         clusterBy: ["id", "is_current"]
     },
     description: "SCD Type 2 customers table. Each row represents one version of a customer. is_current=1 marks the latest version. active_from/active_till define the validity window."
@@ -130,7 +130,7 @@ SELECT
     src.custom_fields,
 
     -- SCD2 metadata columns
-    src.updated_at                   AS active_from,
+    TIMESTAMP(src.updated_at)        AS active_from,
     TIMESTAMP('2099-12-31 23:59:59') AS active_till,
     1                                AS is_current,
     CURRENT_TIMESTAMP()              AS ingestion_ts

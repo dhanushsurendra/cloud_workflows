@@ -1,0 +1,153 @@
+config {
+    type: "incremental",
+    schema: "qb_silver",
+    name: "customers",
+    tags: ["silver"],
+    bigquery: {
+        partitionBy: "active_from",
+        clusterBy: ["id", "is_current"]
+    },
+    description: "SCD Type 2 customers table. Each row represents one version of a customer. is_current=1 marks the latest version. active_from/active_till define the validity window."
+}
+
+-- ============================================================
+-- STEP 1 (pre_operations):
+-- Expire stale current rows BEFORE inserting new ones.
+-- Runs only on incremental executions.
+-- Uses MERGE because BigQuery does not support UPDATE...FROM.
+-- ============================================================
+
+pre_operations {
+    ${when(incremental(), `
+    MERGE ${self()} AS target
+    USING (
+        SELECT id, updated_at
+        FROM ${ref("qb_bronze", "customers")}
+    ) AS source
+    ON  target.id          = source.id
+    AND target.is_current  = 1
+    AND source.updated_at  > target.updated_at
+
+    WHEN MATCHED THEN
+    UPDATE SET
+        target.active_till = source.updated_at,
+        target.is_current  = 0
+    `)}
+}
+
+-- ============================================================
+-- STEP 2 (main SELECT):
+-- Insert new current rows for:
+--   (a) Brand-new customers  → id not yet in silver
+--   (b) Updated customers    → just expired in Step 1
+--
+-- Full refresh: loads all bronze rows (no WHERE filter)
+-- Incremental: only picks up rows newer than MAX(updated_at)
+-- ============================================================
+
+SELECT
+    src.id,
+    src.account_number,
+    src.alternate_contact,
+    src.alternate_phone,
+    src.balance,
+    src.total_balance,
+    src.contact,
+    src.company_name,
+    src.class,
+    src.currency,
+    src.first_name,
+    src.middle_name,
+    src.last_name,
+    src.full_name,
+    src.name,
+    src.salutation,
+    src.parent_id,
+    src.parent_full_name,
+    src.phone,
+    src.fax,
+    src.email,
+    src.cc_email,
+    src.is_active,
+    src.job_description,
+    src.job_title,
+    src.job_status,
+    src.job_type_id,
+    src.job_type_full_name,
+    src.job_start_date,
+    src.job_end_date,
+    src.job_projected_end_date,
+    src.created_at,
+    src.updated_at,
+    src.revision_number,
+    src.object_type,
+    src.price_level_id,
+    src.price_level_full_name,
+    src.resale_number,
+    src.preferred_delivery_method,
+    src.preferred_payment_method_id,
+    src.preferred_payment_method_full_name,
+    src.credit_limit,
+    src.credit_card,
+    src.tax_registration_number,
+    src.external_id,
+    src.sublevel,
+    src.sales_representative,
+    src.note,
+    src.billing_address_line1,
+    src.billing_address_line2,
+    src.billing_address_line3,
+    src.billing_address_line4,
+    src.billing_address_line5,
+    src.billing_address_city,
+    src.billing_address_state,
+    src.billing_address_postal_code,
+    src.billing_address_country,
+    src.billing_address_note,
+    src.shipping_address_line1,
+    src.shipping_address_line2,
+    src.shipping_address_line3,
+    src.shipping_address_line4,
+    src.shipping_address_line5,
+    src.shipping_address_city,
+    src.shipping_address_state,
+    src.shipping_address_postal_code,
+    src.shipping_address_country,
+    src.shipping_address_note,
+    src.customer_type_id,
+    src.customer_type_full_name,
+    src.sales_tax_code_id,
+    src.sales_tax_code_full_name,
+    src.sales_tax_country,
+    src.sales_tax_item_id,
+    src.sales_tax_item_full_name,
+    src.terms_id,
+    src.terms_full_name,
+    src.additional_contacts,
+    src.additional_notes,
+    src.alternate_shipping_addresses,
+    src.custom_contact_fields,
+    src.custom_fields,
+
+    -- SCD2 metadata columns
+    src.updated_at                   AS active_from,
+    TIMESTAMP('2099-12-31 23:59:59') AS active_till,
+    1                                AS is_current,
+    CURRENT_TIMESTAMP()              AS ingestion_ts
+
+FROM ${ref("qb_bronze", "customers")} AS src
+
+${when(incremental(), `
+WHERE
+    src.updated_at > (
+        SELECT COALESCE(MAX(updated_at), TIMESTAMP('1970-01-01'))
+        FROM ${self()}
+    )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM ${self()} AS tgt
+        WHERE tgt.id         = src.id
+          AND tgt.updated_at = src.updated_at
+          AND tgt.is_current = 1
+    )
+`)}

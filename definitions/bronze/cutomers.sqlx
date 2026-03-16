@@ -2,76 +2,72 @@ config {
     type: "incremental",
     schema: "qb_bronze",
     name: "customers",
-    uniqueKey: ["id"]
+    uniqueKey: ["id"],
+    tags: ["bronze"]
 }
 
-with source as (
+
+js {
+  const cols = [
+"id",
+"accountNumber",
+"alternateContact",
+"alternatePhone",
+"balance",
+"totalBalance",
+"contact",
+"companyName",
+"class",
+"currency",
+"firstName",
+"middleName",
+"lastName",
+"fullName",
+"name",
+"salutation",
+"parent.id",
+"parent.fullName",
+"phone",
+"fax",
+"email",
+"ccEmail",
+"isActive",
+"jobDescription",
+"jobTitle",
+"jobStatus",
+"jobType.id",
+"jobType.fullName",
+"jobStartDate",
+"jobEndDate",
+"jobProjectedEndDate",
+"createdAt",
+"updatedAt",
+"revisionNumber",
+"objectType",
+"priceLevel.id",
+"priceLevel.fullName",
+"resaleNumber",
+"preferredDeliveryMethod",
+"preferredPaymentMethod.id",
+"preferredPaymentMethod.fullName",
+"creditLimit",
+"creditCard",
+"taxRegistrationNumber",
+"externalId",
+"sublevel",
+"salesRepresentative",
+"note"
+];
+
+}
+
+
+
+WITH source AS (
 SELECT
- JSON_VALUE(raw_payload,'$.id') AS id,
-JSON_VALUE(raw_payload,'$.accountNumber') AS account_number,
-
-JSON_VALUE(raw_payload,'$.alternateContact') AS alternate_contact,
-JSON_VALUE(raw_payload,'$.alternatePhone') AS alternate_phone,
-
-CAST(JSON_VALUE(raw_payload,'$.balance') AS NUMERIC ) AS balance,
-CAST(JSON_VALUE(raw_payload,'$.totalBalance') AS NUMERIC) AS total_balance,
-
-JSON_VALUE(raw_payload,'$.contact') AS contact,
-JSON_VALUE(raw_payload,'$.companyName') AS company_name,
-JSON_VALUE(raw_payload,'$.class') AS class,
-JSON_VALUE(raw_payload,'$.currency') AS currency,
-
-JSON_VALUE(raw_payload,'$.firstName') AS first_name,
-JSON_VALUE(raw_payload,'$.middleName') AS middle_name,
-JSON_VALUE(raw_payload,'$.lastName') AS last_name,
-JSON_VALUE(raw_payload,'$.fullName') AS full_name,
-JSON_VALUE(raw_payload,'$.name') AS name,
-JSON_VALUE(raw_payload,'$.salutation') AS salutation,
-
-JSON_VALUE(raw_payload,'$.parent.id') AS parent_id,
-JSON_VALUE(raw_payload,'$.parent.fullName') AS parent_full_name,
-
-JSON_VALUE(raw_payload,'$.phone') AS phone,
-JSON_VALUE(raw_payload,'$.fax') AS fax,
-JSON_VALUE(raw_payload,'$.email') AS email,
-JSON_VALUE(raw_payload,'$.ccEmail') AS cc_email,
-
-CAST(JSON_VALUE(raw_payload,'$.isActive') AS BOOL) AS is_active,
-
-JSON_VALUE(raw_payload,'$.jobDescription') AS job_description,
-JSON_VALUE(raw_payload,'$.jobTitle') AS job_title,
-JSON_VALUE(raw_payload,'$.jobStatus') AS job_status,
-JSON_VALUE(raw_payload,'$.jobType.id') AS job_type_id,
-JSON_VALUE(raw_payload,'$.jobType.fullName') AS job_type_full_name,
-
-CAST(JSON_VALUE(raw_payload,'$.jobStartDate') AS DATE) AS job_start_date,
-CAST(JSON_VALUE(raw_payload,'$.jobEndDate') AS DATE) AS job_end_date,
-CAST(JSON_VALUE(raw_payload,'$.jobProjectedEndDate') AS DATE) AS job_projected_end_date,
-
-CAST(JSON_VALUE(raw_payload,'$.createdAt') AS TIMESTAMP) AS created_at,
-CAST(JSON_VALUE(raw_payload,'$.updatedAt') AS TIMESTAMP) AS updated_at,
-
-JSON_VALUE(raw_payload,'$.revisionNumber') AS revision_number,
-JSON_VALUE(raw_payload,'$.objectType') AS object_type,
-
-JSON_VALUE(raw_payload,'$.priceLevel.id') AS price_level_id,
-JSON_VALUE(raw_payload,'$.priceLevel.fullName') AS price_level_full_name,
-JSON_VALUE(raw_payload,'$.resaleNumber') AS resale_number,
-JSON_VALUE(raw_payload,'$.preferredDeliveryMethod') AS preferred_delivery_method,
-JSON_VALUE(raw_payload,'$.preferredPaymentMethod.id') AS preferred_payment_method_id,
-JSON_VALUE(raw_payload,'$.preferredPaymentMethod.fullName') AS preferred_payment_method_full_name,
-
-CAST(JSON_VALUE(raw_payload,'$.creditLimit') AS NUMERIC) AS credit_limit,
-CAST(JSON_VALUE(raw_payload,'$.creditCard') AS NUMERIC) AS credit_card,
-
-JSON_VALUE(raw_payload,'$.taxRegistrationNumber') AS tax_registration_number,
-
-JSON_VALUE(raw_payload,'$.externalId') AS external_id,
-
-CAST(JSON_VALUE(raw_payload,'$.sublevel') AS FLOAT64) AS sublevel,
-JSON_VALUE(raw_payload,'$.salesRepresentative') AS sales_representative,
-
-JSON_VALUE(raw_payload,'$.note') AS note,
+${cols.map(c => `
+JSON_VALUE(raw_payload,'$.${c}') AS ${helpers.toSnakeCase(c)}
+`).join(",\n")},
 
 -- billing address
 
@@ -181,7 +177,7 @@ ARRAY(
   FROM UNNEST(IFNULL(JSON_QUERY_ARRAY(raw_payload,'$.customFields'), [])) x
 ) AS custom_fields
 
-FROM ${ref("raw_customers")}),
+FROM ${ref("raw", "raw_customers")}),
 latest_source AS (
   SELECT 
     *,

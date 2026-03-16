@@ -40,8 +40,6 @@ js {
 "jobStartDate",
 "jobEndDate",
 "jobProjectedEndDate",
-"createdAt",
-"updatedAt",
 "revisionNumber",
 "objectType",
 "priceLevel.id",
@@ -61,13 +59,14 @@ js {
 
 }
 
-
-
 WITH source AS (
 SELECT
 ${cols.map(c => `
 JSON_VALUE(raw_payload,'$.${c}') AS ${helpers.toSnakeCase(c)}
 `).join(",\n")},
+
+TIMESTAMP(JSON_VALUE(raw_payload, '$.createdAt')) AS created_at,
+TIMESTAMP(JSON_VALUE(raw_payload, '$.updatedAt')) AS updated_at,
 
 -- billing address
 
